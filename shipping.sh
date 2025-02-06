@@ -8,7 +8,7 @@ R="\e[31m"
 G="\e[32m"
 Y="\e[33m"
 N="\e[0m"
-MYSQL_HOST=mysql.sadhusundar.xyz
+MYSQL_HOST=172.31.28.137
 
 VALIDATE(){
    if [ $1 -ne 0 ]
