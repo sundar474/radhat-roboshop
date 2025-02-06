@@ -8,7 +8,7 @@ R="\e[31m"
 G="\e[32m"
 Y="\e[33m"
 N="\e[0m"
-MYSQL_HOST=mysql.daws78s.online
+MYSQL_HOST=mysql.sadhusundar.xyz
 
 VALIDATE(){
    if [ $1 -ne 0 ]
@@ -62,7 +62,7 @@ VALIDATE $? "Packaging shipping"
 mv target/shipping-1.0.jar shipping.jar &>> $LOGFILE
 VALIDATE $? "Renaming the artifact"
 
-cp /home/ec2-user/roboshop-shell/shipping.service /etc/systemd/system/shipping.service &>> $LOGFILE
+cp /home/ec2-user/radhat-roboshop/shipping.service /etc/systemd/system/shipping.service &>> $LOGFILE
 VALIDATE $? "Copying service file"
 
 systemctl daemon-reload &>> $LOGFILE
