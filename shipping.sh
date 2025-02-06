@@ -1,87 +1,85 @@
 #!/bin/bash
 
+DATE=$(date +%F)
+LOGSDIR=/tmp
+# /home/centos/shellscript-logs/script-name-date.log
+SCRIPT_NAME=$0
+LOGFILE=$LOGSDIR/$0-$DATE.log
 USERID=$(id -u)
-TIMESTAMP=$(date +%F-%H-%M-%S)
-SCRIPT_NAME=$(echo $0 | cut -d "." -f1)
-LOGFILE=/tmp/$SCRIPT_NAME-$TIMESTAMP.log
 R="\e[31m"
 G="\e[32m"
-Y="\e[33m"
 N="\e[0m"
-MYSQL_HOST=172.31.28.137
+Y="\e[33m"
+
+if [ $USERID -ne 0 ];
+then
+    echo -e "$R ERROR:: Please run this script with root access $N"
+    exit 1
+fi
 
 VALIDATE(){
-   if [ $1 -ne 0 ]
-   then
-        echo -e "$2...$R FAILURE $N"
+    if [ $1 -ne 0 ];
+    then
+        echo -e "$2 ... $R FAILURE $N"
         exit 1
     else
-        echo -e "$2...$G SUCCESS $N"
+        echo -e "$2 ... $G SUCCESS $N"
     fi
 }
 
-if [ $USERID -ne 0 ]
-then
-    echo "Please run this script with root access."
-    exit 1 # manually exit if error comes.
-else
-    echo "You are super user."
-fi
+yum install maven -y &>>$LOGFILE
 
-
-dnf install maven -y &>> $LOGFILE
 VALIDATE $? "Installing Maven"
 
-id roboshop &>> $LOGFILE
-if [ $? -ne 0 ]
-then
-    useradd roboshop &>> $LOGFILE
-    VALIDATE $? "Adding roboshop user"
-else
-    echo -e "roboshop user already exist...$Y SKIPPING $N"
-fi
+useradd roboshop &>>$LOGFILE
 
-rm -rf /app &>> $LOGFILE
-VALIDATE $? "clean up existing directory"
+mkdir /app &>>$LOGFILE
 
-mkdir -p /app &>> $LOGFILE
-VALIDATE $? "Creating app directory"
+curl -L -o /tmp/shipping.zip https://roboshop-builds.s3.amazonaws.com/shipping.zip &>>$LOGFILE
 
-curl -L -o /tmp/shipping.zip https://roboshop-builds.s3.amazonaws.com/shipping.zip &>> $LOGFILE
-VALIDATE $? "Downloading shipping application"
+VALIDATE $? "Downloading shipping artifact"
 
-cd /app  &>> $LOGFILE
+cd /app &>>$LOGFILE
+
 VALIDATE $? "Moving to app directory"
+ 
+unzip /tmp/shipping.zip &>>$LOGFILE
 
-unzip /tmp/shipping.zip &>> $LOGFILE
-VALIDATE $? "Extracting shipping application"
+VALIDATE $? "Unzipping shipping"
 
-mvn clean package &>> $LOGFILE
-VALIDATE $? "Packaging shipping"
+mvn clean package &>>$LOGFILE
 
-mv target/shipping-1.0.jar shipping.jar &>> $LOGFILE
-VALIDATE $? "Renaming the artifact"
+VALIDATE $? "packaging shipping app"
 
-cp /home/ec2-user/radhat-roboshop/shipping.service /etc/systemd/system/shipping.service &>> $LOGFILE
-VALIDATE $? "Copying service file"
+mv target/shipping-1.0.jar shipping.jar &>>$LOGFILE
 
-systemctl daemon-reload &>> $LOGFILE
-VALIDATE $? "Daemon reload"
+VALIDATE $? "renaming shipping jar"
 
-systemctl enable shipping  &>> $LOGFILE
+cp /home/centos/radhat-roboshop/shipping.service /etc/systemd/system/shipping.service &>>$LOGFILE
+
+VALIDATE $? "copying shipping service"
+
+systemctl daemon-reload &>>$LOGFILE
+
+VALIDATE $? "daemon-reload"
+
+systemctl enable shipping  &>>$LOGFILE
+
 VALIDATE $? "Enabling shipping"
 
-systemctl start shipping &>> $LOGFILE
+systemctl start shipping &>>$LOGFILE
+
 VALIDATE $? "Starting shipping"
 
-dnf install mysql -y &>> $LOGFILE
-VALIDATE $? "Installing MySQL"
+yum install mysql -y  &>>$LOGFILE
 
-mysql -h $MYSQL_HOST -uroot -pRoboShop@1 -e "use cities" &>> $LOGFILE
+VALIDATE $? "Installing MySQL client"
+
+mysql -h 172.31.22.210 -uroot -pRoboShop@1 -e "use cities" &>> $LOGFILE
 if [ $? -ne 0 ]
 then
     echo "Schema is ... LOADING"
-    mysql -h $MYSQL_HOST -uroot -pRoboShop@1 < /app/schema/shipping.sql &>> $LOGFILE
+    mysql -h 172.31.22.210 -uroot -pRoboShop@1 < /app/schema/shipping.sql &>> $LOGFILE
     VALIDATE $? "Loading schema"
 else
     echo -e "Schema already exists... $Y SKIPPING $N"
